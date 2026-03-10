@@ -1,0 +1,85 @@
+# Nama alur kerja yang akan ditampilkan di tab Actions di GitHub
+name: Manual Release
+
+# Menentukan kapan alur kerja ini akan dijalankan
+on:
+  # Memungkinkan alur kerja ini dijalankan secara manual dari tab Actions
+  workflow_dispatch:
+    inputs:
+      version_bump:
+        description: 'Pilih jenis kenaikan versi'
+        required: true
+        type: choice
+        options:
+        - patch
+        - minor
+        - major
+
+# Mendefinisikan pekerjaan (jobs) yang akan dijalankan
+jobs:
+  release:
+    # Nama pekerjaan yang akan ditampilkan di UI GitHub
+    name: Tag, Build, and Publish Release
+    # Menggunakan runner Linux terbaru karena Bun dapat melakukan kompilasi silang (cross-compile)
+    runs-on: ubuntu-latest
+
+    # Memberikan izin kepada pekerjaan untuk menulis ke repositori dan rilis
+    permissions:
+      contents: write
+
+    steps:
+      # Langkah 1: Mengunduh kode sumber dari repositori
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Langkah 2: Menyiapkan lingkungan Bun
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "latest"
+
+      # Langkah 3: Menyiapkan lingkungan Node.js (untuk menggunakan npm)
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20' # Menggunakan versi LTS Node.js
+
+      # Langkah 4: Mengkonfigurasi identitas Git untuk bot actions
+      - name: Configure Git
+        run: |
+          git config user.name "GitHub Actions Bot"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      # Langkah 5: Menginstal dependensi proyek
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      # Langkah 6: Memperbarui versi, membuat commit, dan membuat tag menggunakan NPM
+      - name: Bump version, commit, and tag
+        id: tag_version
+        run: |
+          # Menggunakan 'npm version' dengan tipe kenaikan yang dipilih (major, minor, atau patch)
+          # Perintah ini secara otomatis memperbarui package.json, membuat commit, dan membuat tag.
+          # Output dari perintah ini adalah nomor versi baru (misalnya, v2.3.0), yang kita tangkap.
+          NEW_VERSION=$(npm version ${{ github.event.inputs.version_bump }} -m "chore(release): bump version to %s")
+          echo "new_version_tag=${NEW_VERSION}" >> $GITHUB_OUTPUT
+
+      # Langkah 7: Mendorong perubahan (commit dan tag baru) ke branch 'master'
+      - name: Push changes and tags
+        run: git push origin master --follow-tags
+
+      # Langkah 8: Membangun semua biner menggunakan skrip 'bundle'
+      - name: Build all binaries
+        run: bun run bundle
+
+      # Langkah 9: Membuat Rilis GitHub dan mengunggah semua aset
+      - name: Create GitHub Release and Upload Assets
+        uses: softprops/action-gh-release@v2
+        with:
+          # Menggunakan nama tag baru yang ditangkap dari langkah sebelumnya
+          tag_name: ${{ steps.tag_version.outputs.new_version_tag }}
+          name: Release ${{ steps.tag_version.outputs.new_version_tag }}
+          # Menghasilkan catatan rilis secara otomatis berdasarkan riwayat commit
+          generate_release_notes: true
+          # Mengunggah semua file yang cocok dengan pola dari direktori 'dist'
+          files: ./dist/html2pdf-*
