@@ -15,5 +15,6 @@
   "dependencies": {
     "elysia": "^1.4.27",
     "puppeteer-core": "^24.38.0"
-  }
+  },
+  "version": "0.0.1"
 }
