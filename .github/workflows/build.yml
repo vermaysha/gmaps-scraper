@@ -82,4 +82,4 @@ jobs:
           # Menghasilkan catatan rilis secara otomatis berdasarkan riwayat commit
           generate_release_notes: true
           # Mengunggah semua file yang cocok dengan pola dari direktori 'dist'
-          files: ./dist/html2pdf-*
+          files: ./dist/*
