@@ -101,7 +101,7 @@ async function parseFromUrl(page: Page): Promise<ExtractionResult | null> {
 
 // --- Main extraction function ---
 
-const PAGE_TIMEOUT = 30_000;
+const PAGE_TIMEOUT = 10_000;
 
 export async function extractCoordinates(
   url: string
@@ -147,7 +147,7 @@ export async function extractCoordinates(
           if (h1?.textContent?.match(/[°]/)) return true;
           return false;
         })()`,
-        { timeout: 15_000, polling: 200 }
+        { timeout: 5_000, polling: 200 }
       )
       .catch(() => {
         // Timed out — coordinates panel may not exist (e.g. route/directions).
